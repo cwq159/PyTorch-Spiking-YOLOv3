@@ -7,6 +7,7 @@ There is a little difference between spiking-yolov3-tiny and yolov3-tiny, please
 + 'maxpool'->'avgpool'
 + 'upsample'->'transposed_convolutional'
 + 'leaky_relu'->'relu'
++ 'batch_normalization'->'fuse_conv_and_bn'
 
 ## Usage
 Please refer to [eriklindernoren/PyTorch-YOLOv3](https://github.com/eriklindernoren/PyTorch-YOLOv3) for the basic usage of PyTorch-YOLOv3 for training, inference and evaluation.
