@@ -65,7 +65,6 @@ class SpikeConv2d(nn.Conv2d):
         self.register_buffer('Vthr', torch.ones(1))
         self.register_buffer('leakage', torch.zeros(out_channels))
         self.reset_mode = 'subtraction'
-        #self.quant_base = None
         self.bn = bn
 
     def forward(self, x):
@@ -99,7 +98,6 @@ class SpikeConvTranspose2d(nn.ConvTranspose2d):
         self.register_buffer('Vthr', torch.ones(1))
         self.register_buffer('leakage', torch.zeros(out_channels))
         self.reset_mode = 'subtraction'
-        #self.quant_base = None
 
     def forward(self, x):
         if isinstance(x, SpikeTensor):
@@ -118,34 +116,11 @@ class SpikeConvTranspose2d(nn.ConvTranspose2d):
             return out
 
 
-class SpikeLinear(nn.Linear):
-    def __init__(self, in_features, out_features, bias=True, last_layer=False):
-        super().__init__(in_features, out_features, bias)
-        self.last_layer = last_layer
-        self.register_buffer('out_scales', torch.ones(out_features))
-        self.register_buffer('Vthr', torch.ones(1))
-        self.register_buffer('leakage', torch.zeros(out_features))
-        self.reset_mode = 'subtraction'
-        #self.quant_base = None
-
-    def forward(self, x):
-        if isinstance(x, SpikeTensor):
-            Vthr = self.Vthr.view(1, -1)
-            out = F.linear(x.data, self.weight, self.bias)
-            chw = out.size()[1:]
-            out_s = out.view(x.timesteps, -1, *chw)
-            self.mem_potential = torch.zeros(out_s.size(1), *chw).to(out_s.device)
-            spikes = generate_spike_mem_potential(out_s, self.mem_potential, Vthr, self.reset_mode)
-            out = SpikeTensor(torch.cat(spikes, 0), x.timesteps, self.out_scales)
-            return out
-        else:
-            out = F.linear(x, self.weight, self.bias)
-            if not self.last_layer:
-                out = F.relu(out)
-            return out
-
-
 class SpikeAvgPool2d(nn.Module):
+    """
+    substitute all 1 Depthwise Convolution for AvgPooling
+    """
+
     def __init__(self, kernel_size, stride=None, padding=0):
         super().__init__()
         self.kernel_size = _pair(kernel_size)
@@ -155,7 +130,6 @@ class SpikeAvgPool2d(nn.Module):
         self.padding = _pair(padding)
         self.register_buffer('Vthr', torch.ones(1) * np.prod(self.kernel_size))
         self.reset_mode = 'subtraction'
-        #self.quant_base = 1
 
     def forward(self, x):
         Vthr = self.Vthr
@@ -176,4 +150,30 @@ class SpikeAvgPool2d(nn.Module):
             return out
         else:
             out = F.avg_pool2d(x, kernel_size, stride, padding)
+            return out
+
+
+class SpikeLinear(nn.Linear):
+    def __init__(self, in_features, out_features, bias=True, last_layer=False):
+        super().__init__(in_features, out_features, bias)
+        self.last_layer = last_layer
+        self.register_buffer('out_scales', torch.ones(out_features))
+        self.register_buffer('Vthr', torch.ones(1))
+        self.register_buffer('leakage', torch.zeros(out_features))
+        self.reset_mode = 'subtraction'
+
+    def forward(self, x):
+        if isinstance(x, SpikeTensor):
+            Vthr = self.Vthr.view(1, -1)
+            out = F.linear(x.data, self.weight, self.bias)
+            chw = out.size()[1:]
+            out_s = out.view(x.timesteps, -1, *chw)
+            self.mem_potential = torch.zeros(out_s.size(1), *chw).to(out_s.device)
+            spikes = generate_spike_mem_potential(out_s, self.mem_potential, Vthr, self.reset_mode)
+            out = SpikeTensor(torch.cat(spikes, 0), x.timesteps, self.out_scales)
+            return out
+        else:
+            out = F.linear(x, self.weight, self.bias)
+            if not self.last_layer:
+                out = F.relu(out)
             return out

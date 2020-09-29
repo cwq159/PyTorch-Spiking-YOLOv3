@@ -1,10 +1,5 @@
-import torch.nn.functional as F
-
-from spike_layer import *
 from spike_dag import *
-
-import torch.nn as nn
-
+from spike_layer import *
 
 dag = None
 
@@ -42,8 +37,29 @@ class WrappedTensor(torch.Tensor):
 
 
 wrapped_functions = {}
-
+relu_count = 0
 conv2d_count = 0
+conv_transpose2d_count = 0
+batch_norm_count = 0
+avg_pool2d_count = 0
+linear_count = 0
+concat_count = 0
+
+
+def relu_wrapper(inp, inplace=False):
+    global relu_count
+    relu_count += 1
+    op_name = f'relu{relu_count}'
+    in_nodes = [find_node_by_tensor(inp)]
+    op = SpikeReLU()
+    out = wrapped_functions["relu"](inp, inplace=False)
+    out = WrappedTensor(out)
+    out_nodes = [f'{op_name}_out{1}']
+    dag.add_op(op_name, op, in_nodes, out_nodes)
+    dag.add_node(out_nodes[0], out)
+    return out
+
+
 def conv2d_wrapper(inp, weight, bias, stride, padding, dilation, groups):
     global conv2d_count
     conv2d_count += 1
@@ -60,7 +76,6 @@ def conv2d_wrapper(inp, weight, bias, stride, padding, dilation, groups):
     return out
 
 
-conv_transpose2d_count = 0
 def conv_transpose2d_wrapper(inp, weight, bias, stride, padding, out_padding, groups, dilation):
     global conv_transpose2d_count
     conv_transpose2d_count += 1
@@ -78,7 +93,45 @@ def conv_transpose2d_wrapper(inp, weight, bias, stride, padding, out_padding, gr
     return out
 
 
-linear_count = 0
+def batch_norm_wrapper(inp, weight, bias, running_mean, running_var, training, momentum, eps, cudnn_enabled):
+    # fuse conv and bn
+    global batch_norm_count
+    batch_norm_count += 1
+    in_nodes = [find_node_by_tensor(inp)]
+    in_op = find_op_by_out_node(in_nodes[0])
+    if not (isinstance(in_op['op'], SpikeConv2d) or isinstance(in_op['op'], SpikeConvTranspose2d)):
+        raise ValueError(
+            f"Conv2d/ConvTranspose2d is expected before BatchNorm, but {type(in_op['op'])} found. \n {in_op}")
+    bn = nn.BatchNorm2d(weight.size(0), eps, True).to(inp.device)
+    bn.eval()
+    bn.weight.data = weight.data
+    bn.bias.data = bias.data
+    bn.running_mean.data[...] = running_mean
+    bn.running_var.data[...] = running_var
+    in_op['op'].bn = bn
+    out = wrapped_functions["batch_norm"](inp, weight, bias, running_mean, running_var, training, momentum, eps,
+                                          cudnn_enabled)
+    out = WrappedTensor(out)
+    dag.nodes[in_nodes[0]] = out
+    return out
+
+
+def avg_pool2d_wrapper(inp, kernel_size, stride=None, padding=0, ceil_mode=False, count_include_pad=True,
+                       divisor_override=None):
+    global avg_pool2d_count
+    avg_pool2d_count += 1
+    op_name = f'avg_pool2d{avg_pool2d_count}'
+    in_nodes = [find_node_by_tensor(inp)]
+    op = SpikeAvgPool2d(kernel_size, stride, padding)
+    out = wrapped_functions["avg_pool2d"](inp, kernel_size, stride, padding, ceil_mode, count_include_pad,
+                                          divisor_override)
+    out = WrappedTensor(out)
+    out_nodes = [f'{op_name}_out{1}']
+    dag.add_op(op_name, op, in_nodes, out_nodes)
+    dag.add_node(out_nodes[0], out)
+    return out
+
+
 def linear_wrapper(inp, weight, bias=None):
     global linear_count
     linear_count += 1
@@ -95,63 +148,6 @@ def linear_wrapper(inp, weight, bias=None):
     return out
 
 
-relu_count = 0
-def relu_wrapper(inp, inplace=False):
-    global relu_count
-    relu_count += 1
-    op_name = f'relu{relu_count}'
-    in_nodes = [find_node_by_tensor(inp)]
-    op = SpikeReLU()
-    out = wrapped_functions[relu_wrapper](inp, inplace=False)
-    out = WrappedTensor(out)
-    out_nodes = [f'{op_name}_out{1}']
-    dag.add_op(op_name, op, in_nodes, out_nodes)
-    dag.add_node(out_nodes[0], out)
-    return out
-
-
-avg_pool2d_count = 0
-def avg_pool2d_wrapper(inp, kernel_size, stride=None, padding=0, ceil_mode=False, count_include_pad=True,
-                       divisor_override=None):
-    global avg_pool2d_count
-    avg_pool2d_count += 1
-    op_name = f'avg_pool2d{avg_pool2d_count}'
-    in_nodes = [find_node_by_tensor(inp)]
-    op = SpikeAvgPool2d(kernel_size, stride, padding)
-    out = wrapped_functions[avg_pool2d_wrapper](inp, kernel_size, stride, padding, ceil_mode, count_include_pad,
-                                                divisor_override)
-    out = WrappedTensor(out)
-    out_nodes = [f'{op_name}_out{1}']
-    dag.add_op(op_name, op, in_nodes, out_nodes)
-    dag.add_node(out_nodes[0], out)
-    return out
-
-
-batch_norm_count = 0
-def batch_norm_wrapper(inp, weight, bias, running_mean, running_var, training, momentum, eps, cudnn_enabled):
-    # fuse into the conv
-    global batch_norm_count
-    batch_norm_count += 1
-    in_nodes = [find_node_by_tensor(inp)]
-    in_op = find_op_by_out_node(in_nodes[0])
-    if not (isinstance(in_op['op'], SpikeConv2d) or isinstance(in_op['op'], SpikeConvTranspose2d)):
-        raise ValueError(f"Conv2d/ConvTranspose2d is expected before BatchNorm, but {type(in_op['op'])} found. \n {in_op}")
-    bn = nn.BatchNorm2d(weight.size(0), eps, True).to(inp.device)
-    bn.eval()
-    bn.weight.data = weight.data
-    bn.bias.data = bias.data
-    bn.running_mean.data[...] = running_mean
-    bn.running_var.data[...] = running_var
-    # print(f"Debug ann_parser.batch_norm_wrapper\n  running mean {running_mean} \n running_var {running_var}")
-    in_op['op'].bn = bn
-    out = wrapped_functions["batch_norm"](inp, weight, bias, running_mean, running_var, training, momentum, eps,
-                                          cudnn_enabled)
-    out = WrappedTensor(out)
-    dag.nodes[in_nodes[0]] = out
-    return out
-
-
-concat_count = 0
 def concat_wrapper(tensors, dim=None):
     global concat_count
     concat_count += 1
@@ -160,7 +156,6 @@ def concat_wrapper(tensors, dim=None):
     op = DAGConcatOp(dim=dim)
     print(type(tensors[0]))
     out = wrapped_functions['concat'](tensors, dim)
-
     # out=WrappedTensor(out)
     out_nodes = [f'{op_name}_out{1}']
     dag.add_op(op_name, op, in_nodes, out_nodes)
@@ -169,6 +164,10 @@ def concat_wrapper(tensors, dim=None):
 
 
 def wrap():
+    raw = F.relu
+    wrapped_functions["relu"] = raw
+    F.relu = relu_wrapper
+
     raw = F.conv2d
     wrapped_functions["conv2d"] = raw
     F.conv2d = conv2d_wrapper
@@ -177,41 +176,31 @@ def wrap():
     wrapped_functions["conv_transpose2d"] = raw
     F.conv_transpose2d = conv_transpose2d_wrapper
 
+    raw = torch.batch_norm
+    wrapped_functions["batch_norm"] = raw
+    torch.batch_norm = batch_norm_wrapper
+
+    raw = F.avg_pool2d
+    wrapped_functions["avg_pool2d"] = raw
+    F.avg_pool2d = avg_pool2d_wrapper
+
     raw = F.linear
     wrapped_functions["linear"] = raw
     F.linear = linear_wrapper
-
-    raw = F.relu
-    wrapped_functions[relu_wrapper] = raw
-    F.relu = relu_wrapper
-
-    raw = F.avg_pool2d
-    wrapped_functions[avg_pool2d_wrapper] = raw
-    F.avg_pool2d = avg_pool2d_wrapper
 
     raw = torch.cat
     wrapped_functions["concat"] = raw
     torch.cat = concat_wrapper
 
-    raw = torch.batch_norm
-    wrapped_functions["batch_norm"] = raw
-    torch.batch_norm = batch_norm_wrapper
-
-    # raw=F.max_pool2d
-    # wrapped_functions[avg_pool2d_wrapper]=raw
-    # F.max_pool2d=avg_pool2d_wrapper
-
 
 def unwrap():
+    F.relu = wrapped_functions["relu"]
     F.conv2d = wrapped_functions["conv2d"]
     F.conv_transpose2d = wrapped_functions["conv_transpose2d"]
-    F.linear = wrapped_functions["linear"]
-    F.relu = wrapped_functions[relu_wrapper]
-    F.leaky_relu = wrapped_functions[relu_wrapper]
-    F.avg_pool2d = wrapped_functions[avg_pool2d_wrapper]
-    F.max_pool2d = wrapped_functions[avg_pool2d_wrapper]
-    torch.cat = wrapped_functions['concat']
     torch.batch_norm = wrapped_functions['batch_norm']
+    F.avg_pool2d = wrapped_functions["avg_pool2d"]
+    F.linear = wrapped_functions["linear"]
+    torch.cat = wrapped_functions['concat']
 
 
 def parse_ann_model(model, inputs):

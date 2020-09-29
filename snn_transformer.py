@@ -1,15 +1,12 @@
-import torch
-import torch.nn.functional as F
-
-from spike_layer import *
 import ann_parser
+from spike_layer import *
 
 
 def is_layer_weighted_spike(layer):
-    return isinstance(layer, SpikeConv2d) or isinstance(layer, SpikeLinear) or isinstance(layer, SpikeConvTranspose2d)
+    return isinstance(layer, SpikeConv2d) or isinstance(layer, SpikeConvTranspose2d) or isinstance(layer, SpikeLinear)
 
 
-class DataStatus():
+class DataStatus:
     def __init__(self, max_num=1e7, channel_wise=True):
         self.pool = []
         self.num = 0
@@ -39,7 +36,7 @@ class DataStatus():
         self.pool.clear()
         self.pool.append(tensor)
 
-    def max(self, fraction=1, relu=True, max_num=1e6):
+    def fraction_max(self, fraction=1, relu=True, max_num=1e6):
         if self.channel_wise:
             tensor = torch.cat(self.pool, 1)  # shape [n_channels, n]
         else:
@@ -54,7 +51,7 @@ class DataStatus():
             return tensor_sort[int(fraction * tensor_sort.size(0))]
 
 
-class SNNTransformer():
+class SNNTransformer:
     def __init__(self, args, net, device):
         self.original_net = net
         self.timesteps = args.timesteps
@@ -102,9 +99,9 @@ class SNNTransformer():
 
     def fuse_bn(self):
         for layer_name, layer in self.snn_dag.named_modules():
-            if isinstance(layer, SpikeConv2d) and layer.bn is not None:
+            if (isinstance(layer, SpikeConv2d) or isinstance(layer, SpikeConvTranspose2d)) and layer.bn is not None:
                 layer.weight.data[...] = layer.weight * (
-                            layer.bn.weight / torch.sqrt(layer.bn.running_var + layer.bn.eps)).view(-1, 1, 1, 1)
+                        layer.bn.weight / torch.sqrt(layer.bn.running_var + layer.bn.eps)).view(-1, 1, 1, 1)
                 if layer.bias is not None:
                     layer.bias.data[...] = (layer.bias - layer.bn.running_mean) * layer.bn.weight / torch.sqrt(
                         layer.bn.running_var + layer.bn.eps) + layer.bn.bias
@@ -141,8 +138,8 @@ class SNNTransformer():
                 # TODO: supporting specify the first layer for multi input branch network
                 input_status = self.input_status[layer_name]
                 output_status = self.output_status[layer_name]
-                max_in = input_status.max(fraction=0.99).to(self.device)
-                max_out = output_status.max(fraction=0.99).to(self.device)
+                max_in = input_status.fraction_max(fraction=0.99).to(self.device)
+                max_out = output_status.fraction_max(fraction=0.99).to(self.device)
                 if layer_i == 0:
                     layer.weight.data[...] = self.gen_weight(
                         layer, torch.ones(1).to(self.device), max_out)

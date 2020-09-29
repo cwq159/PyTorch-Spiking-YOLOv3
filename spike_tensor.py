@@ -4,7 +4,7 @@ firing_ratio_record = False
 firing_ratios = []
 
 
-class SpikeTensor():
+class SpikeTensor:
     def __init__(self, data, timesteps, scale_factor):
         """
         data shape: [t*batch, channel, height, width]

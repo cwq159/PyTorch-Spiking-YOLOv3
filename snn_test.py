@@ -30,14 +30,15 @@ def snn_evaluate(ann, snn, path, iou_thres, conf_thres, nms_thres, img_size, bat
         targets[:, 2:] *= img_size
 
         imgs = Variable(imgs.type(Tensor), requires_grad=False)
-        replica_data = torch.cat([imgs for _ in range(timesteps)], 0)
+        replica_data = torch.cat([imgs for _ in range(timesteps)], 0)  # replica for input(first) layer
         data = SpikeTensor(replica_data, timesteps, scale_factor=1)
 
         with torch.no_grad():
             spike_tensor.firing_ratio_record = True
-            output_snn1, output_snn2 = snn(data)
+            output_snn1, output_snn2 = snn(data)  # two branches
             spike_tensor.firing_ratio_record = False
-            output_ann1, output_ann2 = output_snn1.to_float(), output_snn2.to_float()
+            output_ann1, output_ann2 = output_snn1.to_float(), output_snn2.to_float()  # spike to real-value
+            # post-processing: yolo, nms
             yolo_outputs = []
             x1, _ = ann.module_list[16][0](output_ann1, img_dim=img_size)
             yolo_outputs.append(x1)

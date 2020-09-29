@@ -13,6 +13,9 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '1,2,3'
 
 
 class ListWrapper(nn.Module):
+    """
+    partial model(without route & yolo layers) to transform
+    """
     def __init__(self, modulelist):
         super().__init__()
         self.list = modulelist
@@ -20,19 +23,19 @@ class ListWrapper(nn.Module):
     def forward(self, x):
         for i in range(9):
             x = self.list[i](x)
-        x1 = x
+        x1 = x  # route1
         for i in range(9, 14):
             x = self.list[i](x)
-        x2 = x
+        x2 = x  # route2
         for i in range(14, 16):
             x = self.list[i](x)
-        y1 = x
+        y1 = x  # branch1
         c = self.list[18](x2)
         c = self.list[19](c)
         x = torch.cat((c, x1), 1)
         for i in range(21, 23):
             x = self.list[i](x)
-        y2 = x
+        y2 = x  # branch2
         return y1, y2
 
 
@@ -85,10 +88,10 @@ if __name__ == '__main__':
         ann.load_state_dict(torch.load(args.weights_path))
 
     ann_to_transform = ListWrapper(ann.module_list)
-    print(ann_to_transform)
 
     # Transform
     transformer = SNNTransformer(args, ann_to_transform, device)
+    # calculate the statistics for parameter-normalization
     transformer.inference_get_status(train_loader, args.statistics_iters)
     snn = transformer.generate_snn()
 
