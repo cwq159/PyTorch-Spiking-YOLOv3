@@ -90,7 +90,7 @@ class SpikeConv2d(nn.Conv2d):
 class SpikeConvTranspose2d(nn.ConvTranspose2d):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, output_padding=0, groups=1,
-                 bias=True, dilation=1, padding_mode='zeros'):
+                 bias=True, dilation=1, padding_mode='zeros', bn=None):
         super().__init__(in_channels, out_channels, kernel_size, stride,
                          padding, output_padding, groups, bias, dilation, padding_mode)
         self.mem_potential = None
@@ -98,12 +98,15 @@ class SpikeConvTranspose2d(nn.ConvTranspose2d):
         self.register_buffer('Vthr', torch.ones(1))
         self.register_buffer('leakage', torch.zeros(out_channels))
         self.reset_mode = 'subtraction'
+        self.bn = bn
 
     def forward(self, x):
         if isinstance(x, SpikeTensor):
             Vthr = self.Vthr.view(1, -1, 1, 1)
             out = F.conv_transpose2d(x.data, self.weight, self.bias, self.stride, self.padding, self.output_padding,
                                      self.groups, self.dilation)
+            if self.bn is not None:
+                out = self.bn(out)
             chw = out.size()[1:]
             out_s = out.view(x.timesteps, -1, *chw)
             self.mem_potential = torch.zeros(out_s.size(1), *chw).to(out_s.device)
@@ -113,6 +116,8 @@ class SpikeConvTranspose2d(nn.ConvTranspose2d):
         else:
             out = F.conv_transpose2d(x.data, self.weight, self.bias, self.stride, self.padding, self.output_padding,
                                      self.groups, self.dilation)
+            if self.bn is not None:
+                out = self.bn(out)
             return out
 
 
@@ -146,7 +151,7 @@ class SpikeAvgPool2d(nn.Module):
             out_s = out.view(x.timesteps, -1, *chw)
             self.mem_potential = torch.zeros(out_s.size(1), *chw).to(out_s.device)
             spikes = generate_spike_mem_potential(out_s, self.mem_potential, Vthr, self.reset_mode)
-            out = SpikeTensor(torch.cat(spikes, 0), x.timesteps, x.scale_factor)
+            out = SpikeTensor(torch.cat(spikes, 0), x.timesteps,F.avg_pool2d(x.scale_factor.unsqueeze(0),kernel_size, stride, padding).squeeze(0))
             return out
         else:
             out = F.avg_pool2d(x, kernel_size, stride, padding)

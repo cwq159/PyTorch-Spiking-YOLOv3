@@ -14,7 +14,8 @@ class DAGViewOp:
         self.sizes = sizes
 
     def __call__(self, x):
-        return x.view(*self.sizes)
+        out = x.view(*self.sizes)
+        return out
 
 
 class DAGConcatOp:
@@ -23,12 +24,14 @@ class DAGConcatOp:
     """
 
     def __init__(self, dim):
+        assert dim != 0
         self.dim = dim
 
     def __call__(self, *xs):
         if isinstance(xs[0], SpikeTensor):
             out = torch.cat([_.data for _ in xs], dim=self.dim)
-            out = SpikeTensor(out, xs[0].timesteps, xs[0].scale_factor)
+            scale_factor = torch.cat([_.scale_factor for _ in xs], dim=self.dim - 1)
+            out = SpikeTensor(out, xs[0].timesteps, scale_factor)
         else:
             out = torch.cat(xs, dim=self.dim)
         return out
@@ -78,7 +81,10 @@ class SpikeDAGModule(nn.Module):
         in_nodes = []
         for _, op in self.ops.items():
             in_nodes.extend(op['in_nodes'])
-        end_nodes = set(self.nodes.keys()) - set(in_nodes)
+        end_nodes=[]
+        for node in self.nodes:
+            if node not in in_nodes:
+                end_nodes.append(node)
         print(end_nodes)
         return tuple(end_nodes)
 

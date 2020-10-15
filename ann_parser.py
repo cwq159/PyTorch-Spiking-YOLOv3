@@ -20,12 +20,12 @@ def find_op_by_out_node(node_name):
     raise ValueError(f"cannot find node {node_name}")
 
 
+view_count = 0
 class WrappedTensor(torch.Tensor):
-    view_count = 0
-
     def view(self, *size):
-        self.view_count += 1
-        op_name = f'view{self.view_count}'
+        global view_count
+        view_count += 1
+        op_name = f'view{view_count}'
         in_nodes = [find_node_by_tensor(self)]
         op = DAGViewOp(size)
         out = super().view(*size)

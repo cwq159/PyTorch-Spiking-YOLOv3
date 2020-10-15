@@ -138,8 +138,8 @@ class SNNTransformer:
                 # TODO: supporting specify the first layer for multi input branch network
                 input_status = self.input_status[layer_name]
                 output_status = self.output_status[layer_name]
-                max_in = input_status.fraction_max(fraction=0.99).to(self.device)
-                max_out = output_status.fraction_max(fraction=0.99).to(self.device)
+                max_in = input_status.fraction_max(fraction=0.99999).to(self.device)
+                max_out = output_status.fraction_max(fraction=0.99999).to(self.device)
                 if layer_i == 0:
                     layer.weight.data[...] = self.gen_weight(
                         layer, torch.ones(1).to(self.device), max_out)
@@ -149,7 +149,8 @@ class SNNTransformer:
                 layer.Vthr[...] = self.gen_Vthr(layer)
                 layer.out_scales.data[...] = max_out
                 if layer.bias is not None:
-                    layer.bias.data[...] = self.gen_bias(layer, max_out)
+                    new_bias=self.gen_bias(layer, max_out)
+                    layer.bias.data[...] = new_bias
                     layer.leakage = layer.bias.data
                 print(f"set {layer_name}: Vthr {layer.Vthr}")
         # unwrap the layers

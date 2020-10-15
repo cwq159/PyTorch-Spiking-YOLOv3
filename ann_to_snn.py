@@ -4,12 +4,13 @@ from torch.utils.data import DataLoader
 
 from models import *
 from snn_test import snn_evaluate
+from snn_test import ann_evaluate
 from snn_transformer import SNNTransformer
 from utils.datasets import *
 from utils.utils import *
 
 torch.cuda.empty_cache()
-os.environ['CUDA_VISIBLE_DEVICES'] = '1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 
 class ListWrapper(nn.Module):
@@ -24,18 +25,14 @@ class ListWrapper(nn.Module):
         for i in range(9):
             x = self.list[i](x)
         x1 = x  # route1
-        for i in range(9, 14):
+        for i in range(9, 13):
             x = self.list[i](x)
         x2 = x  # route2
-        for i in range(14, 16):
-            x = self.list[i](x)
-        y1 = x  # branch1
-        c = self.list[18](x2)
-        c = self.list[19](c)
+        y1 = self.list[13](x)  # branch1
+        c = self.list[17](x2)
+        c = self.list[18](c)
         x = torch.cat((c, x1), 1)
-        for i in range(21, 23):
-            x = self.list[i](x)
-        y2 = x  # branch2
+        y2 = self.list[20](x)  # branch2
         return y1, y2
 
 
@@ -85,9 +82,28 @@ if __name__ == '__main__':
         ann.load_darknet_weights(args.weights_path)
     else:
         # Load checkpoint weights
-        ann.load_state_dict(torch.load(args.weights_path))
-
+        ann.load_state_dict(torch.load(args.weights_path, map_location=device))
     ann_to_transform = ListWrapper(ann.module_list)
+
+    # Test the results
+    print("Compute ann_mAP...")
+
+    precision, recall, ann_AP, f1, ap_class = ann_evaluate(
+        ann,
+        ann_to_transform,
+        path=valid_path,
+        iou_thres=args.iou_thres,
+        conf_thres=args.conf_thres,
+        nms_thres=args.nms_thres,
+        img_size=args.img_size,
+        batch_size=8,
+    )
+
+    print("ANN Average Precisions:")
+    for i, c in enumerate(ap_class):
+        print(f"+ Class '{c}' ({class_names[c]}) - AP: {ann_AP[i]}")
+
+    print(f"ann_mAP: {ann_AP.mean()}")
 
     # Transform
     transformer = SNNTransformer(args, ann_to_transform, device)
@@ -98,7 +114,7 @@ if __name__ == '__main__':
     # Test the results
     print("Compute snn_mAP...")
 
-    precision, recall, AP, f1, ap_class, firing_ratios = snn_evaluate(
+    precision, recall, snn_AP, f1, ap_class, firing_ratios = snn_evaluate(
         ann,
         snn,
         path=valid_path,
@@ -106,15 +122,15 @@ if __name__ == '__main__':
         conf_thres=args.conf_thres,
         nms_thres=args.nms_thres,
         img_size=args.img_size,
-        batch_size=4,
+        batch_size=8,
         timesteps=args.timesteps
     )
 
     print("SNN Average Precisions:")
     for i, c in enumerate(ap_class):
-        print(f"+ Class '{c}' ({class_names[c]}) - snn_AP: {AP[i]}")
+        print(f"+ Class '{c}' ({class_names[c]}) - snn_AP: {snn_AP[i]}")
 
-    print(f"snn_mAP: {AP.mean()}")
+    print(f"snn_mAP: {snn_AP.mean()}")
 
     # Save the SNN
     torch.save(snn, args.save_file)
@@ -123,7 +139,8 @@ if __name__ == '__main__':
 
     # Save the snn info
     snn_info = {
-        'snn_mAP': float(AP.mean()),
+        'ann_mAP': float(ann_AP.mean()),
+        'snn_mAP': float(snn_AP.mean()),
         'mean_firing_ratio': float(firing_ratios.mean()),
         'firing_ratios': [float(_) for _ in firing_ratios],
     }
