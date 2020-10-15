@@ -17,8 +17,14 @@ python3 train.py --model_def config/spiking-yolov3-tiny.cfg
 ```
 ### Transform
 ```
-python3 ann_to_snn.py --model_def config/spiking-yolov3-tiny.cfg --weights_path checkpoints/yolov3_ckpt_100.pth --channel_wise
+python3 ann_to_snn.py --model_def config/spiking-yolov3-tiny.cfg --weights_path checkpoints/spiking-yolov3-tiny_ckpt_99.pth 
 ```
+
+## Results
+Take UAV dataset for example, a new model config(spiking-yolov3-tiny-v2) is designed for it. For higher accuracy(mAP), 'maxpool'(stride=2) is transformed into 'convolutional'(stride=2). Given that 'maxpool'(stride=1) doesn't downsample the feature map, it is removed.
+|  criteria  |  yolov3-tiny  |  spiking-yolov3-tiny-v2(ANN)  |  spiking-yolov3-tiny-v2(SNN)  |
+|  ----  |  ----  |  ----  |  ----  |
+|  mAP  |  85.26%  |  85.88%  |  76.30%  |
 
 ## References
 ### Articles
