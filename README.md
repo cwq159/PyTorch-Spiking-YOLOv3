@@ -44,6 +44,7 @@ Here we show the results(mAP) of COCO2014 which is commonly used in object detec
 |  UAVCUT  |  99.84%  |  99.86%  |  **99.80%**  |  **99.60%**  |
 |  UAV  |  80.21%  |  90.81%  |  **89.05%**  |  **87.02%**  |
 |  COCO2014  |  54.93%  |  30.87%  |  **13.30%**  |  **13.82%**  |
+
 From the results, we can conclude that: 
 1) for simple custom datasets, converting some operators is equivalent to the original YOLOv3-Tiny; 
 2) for complete dataset like COCO2014, the accuracy of converting some operators is lower than the original YOLOv3-Tiny;
