@@ -14,24 +14,24 @@ For spiking implementation, some operators in YOLOv3-Tiny have been converted eq
 Please refer to [eriklindernoren/PyTorch-YOLOv3](https://github.com/eriklindernoren/PyTorch-YOLOv3) for the basic usage of PyTorch-YOLOv3 for training, evaluation and inference. The main advantage of PyTorch-Spiking-YOLOv3 is the transformation from ANN to SNN.
 ### Train
 ```
-python3 train.py
+$ python3 train.py
 ```
 After training, please rename your checkpoint file and move it to the /weights folder.
 ```
-cd checkpoints
-mv yolov3-tiny-ours_ckpt_99.pth ../weights/yolov3-tiny-ours_best.pth
+$ cd checkpoints
+$ mv yolov3-tiny-ours_ckpt_99.pth ../weights/yolov3-tiny-ours_best.pth
 ```
 ### Test
 ```
-python3 test.py
+$ python3 test.py
 ```
 ### Detect
 ```
-python3 detect.py
+$ python3 detect.py
 ```
 ### Transform
 ```
-python3 ann_to_snn.py
+$ python3 ann_to_snn.py
 ```
 For higher accuracy(mAP), you can try to adjust some hyperparameters.
 
