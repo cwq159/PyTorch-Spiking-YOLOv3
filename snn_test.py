@@ -1,15 +1,11 @@
 from torch.utils.data import DataLoader
 
-import spike_tensor
-from spike_tensor import SpikeTensor
+from spiking_utils import spike_tensor
+from spiking_utils.spike_tensor import SpikeTensor
 from utils.datasets import *
 from utils.utils import *
 
-import os
 import torch
-torch.cuda.empty_cache()
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def ann_evaluate(ann, partial_ann, path, iou_thres, conf_thres, nms_thres, img_size, batch_size):
@@ -27,7 +23,8 @@ def ann_evaluate(ann, partial_ann, path, iou_thres, conf_thres, nms_thres, img_s
     labels = []
     sample_metrics = []  # List of tuples (TP, confs, pred)
     for batch_i, (_, imgs, targets) in enumerate(tqdm.tqdm(dataloader, desc="Detecting objects")):
-
+        if targets is None:
+            continue
         # Extract labels
         labels += targets[:, 1].tolist()
         # Rescale target
@@ -60,7 +57,7 @@ def ann_evaluate(ann, partial_ann, path, iou_thres, conf_thres, nms_thres, img_s
     return precision, recall, AP, f1, ap_class
 
 
-def snn_evaluate(ann, snn, path, iou_thres, conf_thres, nms_thres, img_size, batch_size, timesteps):
+def snn_evaluate(ann, snn, path, iou_thres, conf_thres, nms_thres, img_size, batch_size, timesteps, device):
     ann.eval()
     snn.eval()
     ann.to(device)
@@ -79,7 +76,8 @@ def snn_evaluate(ann, snn, path, iou_thres, conf_thres, nms_thres, img_size, bat
     sample_metrics = []  # List of tuples (TP, confs, pred)
     total_firing_ratios = []
     for batch_i, (_, imgs, targets) in enumerate(tqdm.tqdm(dataloader, desc="Detecting objects")):
-
+        if targets is None:
+            continue
         # Extract labels
         labels += targets[:, 1].tolist()
         # Rescale target
@@ -87,21 +85,16 @@ def snn_evaluate(ann, snn, path, iou_thres, conf_thres, nms_thres, img_size, bat
         targets[:, 2:] *= img_size
 
         imgs = Variable(imgs.type(Tensor), requires_grad=False)
+        # print(f"imgs.size: {imgs.size()}, timesteps: {timesteps}")
         replica_data = torch.cat([imgs for _ in range(timesteps)], 0)  # replica for input(first) layer
         data = SpikeTensor(replica_data, timesteps, scale_factor=1)
 
         with torch.no_grad():
             spike_tensor.firing_ratio_record = True
             output_snn1, output_snn2 = snn(data)  # two branches
-            #if output_snn1.size(1) != 512:
-            #    output_snn1, output_snn2 = output_snn2, output_snn1
-            #assert output_snn1.size(1) == 512 and output_snn2.size(1) == 256
-            #print('output_snn shape: ', output_snn1.size(), output_snn2.size())
             spike_tensor.firing_ratio_record = False
             output_ann1 = output_snn1.to_float()  # spike to real-value
             output_ann2 = output_snn2.to_float()
-            #print('output: ', output_ann1[0], output_ann2[0])
-            #print('output_ann shape: ', output_ann1.size(), output_ann2.size())
             # post-processing: conv, yolo, nms
             output_ann1 = ann.module_list[14](output_ann1)
             output_ann2 = ann.module_list[-2](output_ann2)

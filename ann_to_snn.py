@@ -1,21 +1,16 @@
 import argparse
 import json
 from torch.utils.data import DataLoader
-
 from models import *
-from snn_test import snn_evaluate
-from snn_test import ann_evaluate
-from snn_transformer import SNNTransformer
+from snn_test import *
+from spiking_utils.snn_transformer import SNNTransformer
 from utils.datasets import *
 from utils.utils import *
-
-torch.cuda.empty_cache()
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 
 class ListWrapper(nn.Module):
     """
-    partial model(without route & yolo layers) to transform
+    partial model(without route & conv[-1] & yolo layers) to transform
     """
     def __init__(self, modulelist):
         super().__init__()
@@ -39,24 +34,27 @@ class ListWrapper(nn.Module):
 if __name__ == '__main__':
     # parse args
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
+    parser.add_argument("--model_def", type=str, default="config/yolov3-tiny-ours.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
-    parser.add_argument("--weights_path", type=str, default="weights/yolov3.weights", help="path to weights file")
+    parser.add_argument("--weights_path", type=str, default="weights/yolov3-tiny-ours_best.pth", help="path to weights file")
     parser.add_argument('--batch_size', default=8, type=int)
+    parser.add_argument('--test_batch_size', default=8, type=int)
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
     parser.add_argument('--statistics_iters', default=30, type=int, help='iterations for gather activation statistics')
     parser.add_argument("--iou_thres", type=float, default=0.5, help="iou threshold required to qualify as detected")
     parser.add_argument("--conf_thres", type=float, default=0.001, help="object confidence threshold")
-    parser.add_argument("--nms_thres", type=float, default=0.5, help="iou thresshold for non-maximum suppression")
+    parser.add_argument("--nms_thres", type=float, default=0.5, help="iou threshold for non-maximum suppression")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
     parser.add_argument('--timesteps', '-T', default=16, type=int)
     parser.add_argument('--reset_mode', default='subtraction', type=str, choices=['zero', 'subtraction'])
     parser.add_argument('--channel_wise', '-cw', action='store_true', help='transform in each channel')
-    parser.add_argument('--save_file', default="./out_snn.pth", type=str,
+    parser.add_argument('--save_file', default="yolov3-tiny-ours-snn", type=str,
                         help='the output location of the transferred weights')
-
+    parser.add_argument("--cuda_device", type=str, default='0,1,2,3', help="select cuda visible devices")
     args = parser.parse_args()
     args.activation_bitwidth = np.log2(args.timesteps)
+    torch.cuda.empty_cache()
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.cuda_device
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     # Preparing the dataset
@@ -83,11 +81,10 @@ if __name__ == '__main__':
     else:
         # Load checkpoint weights
         ann.load_state_dict(torch.load(args.weights_path, map_location=device))
-    ann_to_transform = ListWrapper(ann.module_list)
 
+    ann_to_transform = ListWrapper(ann.module_list)
     # Test the results
     print("Compute ann_mAP...")
-
     precision, recall, ann_AP, f1, ap_class = ann_evaluate(
         ann,
         ann_to_transform,
@@ -96,13 +93,11 @@ if __name__ == '__main__':
         conf_thres=args.conf_thres,
         nms_thres=args.nms_thres,
         img_size=args.img_size,
-        batch_size=8,
+        batch_size=args.test_batch_size,
     )
-
     print("ANN Average Precisions:")
     for i, c in enumerate(ap_class):
         print(f"+ Class '{c}' ({class_names[c]}) - AP: {ann_AP[i]}")
-
     print(f"ann_mAP: {ann_AP.mean()}")
 
     # Transform
@@ -113,7 +108,6 @@ if __name__ == '__main__':
 
     # Test the results
     print("Compute snn_mAP...")
-
     precision, recall, snn_AP, f1, ap_class, firing_ratios = snn_evaluate(
         ann,
         snn,
@@ -122,18 +116,17 @@ if __name__ == '__main__':
         conf_thres=args.conf_thres,
         nms_thres=args.nms_thres,
         img_size=args.img_size,
-        batch_size=8,
-        timesteps=args.timesteps
+        batch_size=1,
+        timesteps=args.timesteps,
+        device=device
     )
-
     print("SNN Average Precisions:")
     for i, c in enumerate(ap_class):
         print(f"+ Class '{c}' ({class_names[c]}) - snn_AP: {snn_AP[i]}")
-
     print(f"snn_mAP: {snn_AP.mean()}")
 
     # Save the SNN
-    torch.save(snn, args.save_file)
+    torch.save(snn, args.save_file + '.pth')
     torch.save(snn.state_dict(), args.save_file + '.weight')
     print("Save the SNN in {}".format(args.save_file))
 

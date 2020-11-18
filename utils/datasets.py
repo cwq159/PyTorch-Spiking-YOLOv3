@@ -125,7 +125,7 @@ class ListDataset(Dataset):
             targets[:, 1:] = boxes
 
         # Apply augmentations
-        if self.augment:
+        if self.augment and targets is not None:  # avoid images without labels
             if np.random.random() < 0.5:
                 img, targets = horisontal_flip(img, targets)
 
@@ -138,7 +138,10 @@ class ListDataset(Dataset):
         # Add sample index to targets
         for i, boxes in enumerate(targets):
             boxes[:, 0] = i
-        targets = torch.cat(targets, 0)
+        try:
+            targets = torch.cat(targets, 0)
+        except RuntimeError as e_inst:
+            targets = None  # No boxes for an image
         # Selects new image size every tenth batch
         if self.multiscale and self.batch_count % 10 == 0:
             self.img_size = random.choice(range(self.min_size, self.max_size + 1, 32))

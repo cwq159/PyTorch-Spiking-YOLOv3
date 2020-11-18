@@ -22,15 +22,14 @@ from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
 
-torch.cuda.empty_cache()
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=100, help="number of epochs")
-    parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
+    parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch during training")
+    parser.add_argument("--test_batch_size", type=int, default=8, help="size of each image batch during testing")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
-    parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
+    parser.add_argument("--model_def", type=str, default="config/yolov3-tiny-ours.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
     parser.add_argument("--pretrained_weights", type=str, help="if specified starts from checkpoint model")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
@@ -39,11 +38,15 @@ if __name__ == "__main__":
     parser.add_argument("--evaluation_interval", type=int, default=1, help="interval evaluations on validation set")
     parser.add_argument("--compute_map", default=False, help="if True computes mAP every tenth batch")
     parser.add_argument("--multiscale_training", default=True, help="allow for multi-scale training")
+    parser.add_argument("--cuda_device", type=str, default='0,1,2,3', help="select cuda visible devices")
+    parser.add_argument("--checkpoint_name", type=str, default="yolov3-tiny-ours", help="name of checkpoint file")
     opt = parser.parse_args()
     print(opt)
 
     logger = Logger("logs")
 
+    torch.cuda.empty_cache()
+    os.environ['CUDA_VISIBLE_DEVICES'] = opt.cuda_device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     os.makedirs("output", exist_ok=True)
@@ -150,10 +153,10 @@ if __name__ == "__main__":
 
             model.seen += imgs.size(0)
 
-        if epoch % opt.checkpoint_interval == 0:
-            torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)
+        if (epoch + 1) % opt.checkpoint_interval == 0:
+            torch.save(model.state_dict(), f"checkpoints/{opt.checkpoint_name}_ckpt_%d.pth" % epoch)
 
-        if epoch % opt.evaluation_interval == 0:
+        if (epoch + 1) % opt.evaluation_interval == 0:
             print("\n---- Evaluating Model ----")
             # Evaluate the model on the validation set
             precision, recall, AP, f1, ap_class = evaluate(
@@ -163,7 +166,7 @@ if __name__ == "__main__":
                 conf_thres=0.5,
                 nms_thres=0.5,
                 img_size=opt.img_size,
-                batch_size=8,
+                batch_size=opt.test_batch_size,
             )
             evaluation_metrics = [
                 ("val_precision", precision.mean()),
