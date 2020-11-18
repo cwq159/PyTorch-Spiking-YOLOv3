@@ -41,8 +41,8 @@ For higher accuracy(mAP), you can try to adjust some hyperparameters.
 Here we show the results(mAP) of COCO2014 which is commonly used in object detection，and two custom datasets UAV/UAVCUT.
 |  dataset  |  yolov3  |  yolov3-tiny  |  yolov3-tiny-ours  |  yolov3-tiny-ours-snn  |
 |  ----  |  ----  |  ----  |  ----  |  ----  |
-|  UAVCUT  |  99.84%  |  99.86%  |  99.80%  |  99.60%  |
-|  UAV  |  80.21%  |  90.81%  |  89.05%  |  87.02%  |
+|  UAVCUT  |  99.84%  |  99.86%  |  99.80%  |  **99.60%**  |
+|  UAV  |  80.21%  |  90.81%  |  89.05%  |  **87.02%**  |
 |  COCO2014  |  54.93%  |  30.87%  |  ***  |  ***  |
 
 ![avatar](/assets/uavcut.png)
