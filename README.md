@@ -1,30 +1,55 @@
 # PyTorch-Spiking-YOLOv3
-A minimal PyTorch implementation of Spiking-YOLOv3, based on the minimal PyTorch implementation of PyTorch-YOLOv3([eriklindernoren/PyTorch-YOLOv3](https://github.com/eriklindernoren/PyTorch-YOLOv3)), with support for spiking-yolov3-tiny at present.
+A minimal PyTorch implementation of Spiking-YOLOv3, based on the minimal PyTorch implementation of YOLOv3([eriklindernoren/PyTorch-YOLOv3](https://github.com/eriklindernoren/PyTorch-YOLOv3)), with support for Spiking-YOLOv3-Tiny at present. The whole Spiking-YOLOv3 will be supported soon.
 
 ## Introduction
-There is a little difference between spiking-yolov3-tiny and yolov3-tiny, please refer to *.cfg for details.
-### Transformation of some operators
-+ 'maxpool'->'avgpool'
+For spiking implementation, some operators in YOLOv3-Tiny have been converted equivalently. Please refer to [yolov3-tiny-ours.cfg](/config/yolov3-tiny-ours.cfg) for details.
+### Conversion of some operators
++ 'maxpool(stride=2)'->'convolutional(stride=2)'
++ 'maxpool(stride=1)'->'none'
 + 'upsample'->'transposed_convolutional'
 + 'leaky_relu'->'relu'
 + 'batch_normalization'->'fuse_conv_and_bn'
 
 ## Usage
-Please refer to [eriklindernoren/PyTorch-YOLOv3](https://github.com/eriklindernoren/PyTorch-YOLOv3) for the basic usage of PyTorch-YOLOv3 for training, inference and evaluation.
+Please refer to [eriklindernoren/PyTorch-YOLOv3](https://github.com/eriklindernoren/PyTorch-YOLOv3) for the basic usage of PyTorch-YOLOv3 for training, evaluation and inference. The main advantage of PyTorch-Spiking-YOLOv3 is the transformation from ANN to SNN.
 ### Train
 ```
-python3 train.py --model_def config/spiking-yolov3-tiny.cfg 
+python3 train.py
+```
+After training, please rename your checkpoint file and move it to the /weights folder.
+```
+cd checkpoints
+mv yolov3-tiny-ours_ckpt_99.pth ../weights/yolov3-tiny-ours_best.pth
+```
+### Test
+```
+python3 test.py
+```
+### Detect
+```
+python3 detect.py
 ```
 ### Transform
 ```
-python3 ann_to_snn.py --model_def config/spiking-yolov3-tiny.cfg --weights_path checkpoints/spiking-yolov3-tiny_ckpt_99.pth 
+python3 ann_to_snn.py
 ```
+For higher accuracy(mAP), you can try to adjust some hyperparameters.
+
+*Trick: the larger timesteps, the higher accuracy.*
 
 ## Results
-Take UAV dataset for example, a new model config(spiking-yolov3-tiny-v2) is designed for it. For higher accuracy(mAP), 'maxpool'(stride=2) is transformed into 'convolutional'(stride=2). Given that 'maxpool'(stride=1) doesn't downsample the feature map, it is removed.
-|  criteria  |  yolov3-tiny  |  spiking-yolov3-tiny-v2(ANN)  |  spiking-yolov3-tiny-v2(SNN)  |
-|  ----  |  ----  |  ----  |  ----  |
-|  mAP  |  85.26%  |  85.88%  |  76.30%  |
+Here we show the results(mAP) of COCO2014 which is commonly used in object detection，and two custom datasets UAV/UAVCUT.
+|  dataset  |  yolov3  |  yolov3-tiny  |  yolov3-tiny-ours  |  yolov3-tiny-ours-snn  |
+|  ----  |  ----  |  ----  |  ----  |  ----  |
+|  UAVCUT  |  99.84%  |  99.86%  |  99.80%  |  99.60%  |
+|  UAV  |  80.21%  |  90.81%  |  89.05%  |  87.02%  |
+|  COCO2014  |  54.93%  |  30.87%  |  ***  |  ***  |
+
+![avatar](/assets/uavcut.png)
+
+![avatar](/assets/uav.png)
+
+![avatar](/assets/dog.png)
 
 ## References
 ### Articles
