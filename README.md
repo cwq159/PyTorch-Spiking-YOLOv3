@@ -43,7 +43,7 @@ Here we show the results(mAP) of COCO2014 which is commonly used in object detec
 |  ----  |  ----  |  ----  |  ----  |  ----  |
 |  UAVCUT  |  99.84%  |  99.86%  |  99.80%  |  **99.60%**  |
 |  UAV  |  80.21%  |  90.81%  |  89.05%  |  **87.02%**  |
-|  COCO2014  |  54.93%  |  30.87%  |  ***  |  ***  |
+|  COCO2014  |  54.93%  |  30.87%  |  ing  |  ing  |
 
 ![avatar](/assets/uavcut.png)
 
