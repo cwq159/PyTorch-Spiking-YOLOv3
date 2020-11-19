@@ -41,9 +41,14 @@ For higher accuracy(mAP), you can try to adjust some hyperparameters.
 Here we show the results(mAP) of COCO2014 which is commonly used in object detection，and two custom datasets UAV/UAVCUT.
 |  dataset  |  yolov3  |  yolov3-tiny  |  yolov3-tiny-ours  |  yolov3-tiny-ours-snn  |
 |  ----  |  ----  |  ----  |  ----  |  ----  |
-|  UAVCUT  |  99.84%  |  99.86%  |  99.80%  |  **99.60%**  |
-|  UAV  |  80.21%  |  90.81%  |  89.05%  |  **87.02%**  |
-|  COCO2014  |  54.93%  |  30.87%  |  ing  |  ing  |
+|  UAVCUT  |  99.84%  |  99.86%  |  **99.80%**  |  **99.60%**  |
+|  UAV  |  80.21%  |  90.81%  |  **89.05%**  |  **87.02%**  |
+|  COCO2014  |  54.93%  |  30.87%  |  **13.30%**  |  **13.82%**  |
+
+From the results, we can conclude that: 
+1) for simple custom datasets, converting some operators is equivalent to the original YOLOv3-Tiny; 
+2) for complete dataset like COCO2014, the accuracy of converting some operators is lower than the original YOLOv3-Tiny;
+3) regardless of datasets, our method of transformation from ANN to SNN can be nearly lossless.
 
 ![avatar](/assets/uavcut.png)
 
