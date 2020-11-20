@@ -38,23 +38,31 @@ For higher accuracy(mAP), you can try to adjust some hyperparameters.
 *Trick: the larger timesteps, the higher accuracy.*
 
 ## Results
-Here we show the results(mAP) of COCO2014 which is commonly used in object detection，and two custom datasets UAV/UAVCUT.
+Here we show the results(mAP) of PASCAL VOC & COCO which are commonly used in object detection，and two custom datasets UAV & UAVCUT.
 |  dataset  |  yolov3  |  yolov3-tiny  |  yolov3-tiny-ours  |  yolov3-tiny-ours-snn  |
 |  ----  |  ----  |  ----  |  ----  |  ----  |
 |  UAVCUT  |  99.84%  |  99.86%  |  **99.80%**  |  **99.60%**  |
 |  UAV  |  80.21%  |  90.81%  |  **89.05%**  |  **87.02%**  |
+|  VOC07+12  |  42.63%  |  30.47%  |  **33.32%**  |  **33.68%**  |
 |  COCO2014  |  54.93%  |  30.87%  |  **13.30%**  |  **13.82%**  |
 
 From the results, we can conclude that: 
 1) for simple custom datasets, converting some operators is equivalent to the original YOLOv3-Tiny; 
-2) for complete dataset like COCO2014, the accuracy of converting some operators is lower than the original YOLOv3-Tiny;
+2) for relatively simple dataset like PASCAL VOC, converting some operators leads to higher accuracy than the original YOLOv3-Tiny;
+2) for complete dataset like COCO, the accuracy of converting some operators is lower than the original YOLOv3-Tiny;
 3) regardless of datasets, our method of transformation from ANN to SNN can be nearly lossless.
 
 ![avatar](/assets/uavcut.png)
 
 ![avatar](/assets/uav.png)
 
-![avatar](/assets/dog.png)
+PASCAL VOC
+![avatar](/assets/voc.png)
+The relatively higher accuracy contributes to the more accurate detection, although there are few objects missed.
+
+COCO
+![avatar](/assets/coco.png)
+The lower accuracy contributes to the less accurate detection, with some objects missed or false.
 
 ## References
 ### Articles
