@@ -2,7 +2,7 @@ import argparse
 import json
 from torch.utils.data import DataLoader
 from models import *
-from snn_test import *
+from spiking_utils.snn_evaluate import *
 from spiking_utils.snn_transformer import SNNTransformer
 from utils.datasets import *
 from utils.utils import *
