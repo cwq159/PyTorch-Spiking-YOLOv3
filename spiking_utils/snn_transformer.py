@@ -86,10 +86,10 @@ class SNNTransformer:
                 layer.register_forward_hook(forward_hook)
 
     def inference_get_status(self, train_loader, num_iters):
-        for batch_i, (_, imgs, targets) in enumerate(train_loader):
+        for batch_i, (imgs, targets, paths, _) in enumerate(train_loader):
             if batch_i > num_iters:
                 break
-            data = imgs.to(self.device)
+            data = imgs.to(self.device).float() / 255.0  # uint8 to float32, 0 - 255 to 0.0 - 1.0
             if self.snn_dag is None:
                 self.init_dag([data])
             out = self.snn_dag(data)
