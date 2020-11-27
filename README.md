@@ -1,5 +1,5 @@
 # PyTorch-Spiking-YOLOv3
-A minimal PyTorch implementation of Spiking-YOLOv3, based on the minimal PyTorch implementation of YOLOv3([eriklindernoren/PyTorch-YOLOv3](https://github.com/eriklindernoren/PyTorch-YOLOv3)), with support for Spiking-YOLOv3-Tiny at present. The whole Spiking-YOLOv3 will be supported soon.
+A PyTorch implementation of Spiking-YOLOv3, based on the PyTorch implementation of YOLOv3([ultralytics/yolov3](https://github.com/ultralytics/yolov3)), with support for Spiking-YOLOv3-Tiny at present. The whole Spiking-YOLOv3 will be supported soon.
 
 ## Introduction
 For spiking implementation, some operators in YOLOv3-Tiny have been converted equivalently. Please refer to [yolov3-tiny-ours.cfg](/config/yolov3-tiny-ours.cfg) for details.
@@ -11,27 +11,22 @@ For spiking implementation, some operators in YOLOv3-Tiny have been converted eq
 + 'batch_normalization'->'fuse_conv_and_bn'
 
 ## Usage
-Please refer to [eriklindernoren/PyTorch-YOLOv3](https://github.com/eriklindernoren/PyTorch-YOLOv3) for the basic usage of PyTorch-YOLOv3 for training, evaluation and inference. The main advantage of PyTorch-Spiking-YOLOv3 is the transformation from ANN to SNN.
+Please refer to [ultralytics/yolov3](https://github.com/ultralytics/yolov3) for the basic usage for training, evaluation and inference. The main advantage of PyTorch-Spiking-YOLOv3 is the transformation from ANN to SNN.
 ### Train
 ```
-$ python3 train.py
-```
-After training, please rename your checkpoint file and move it to the /weights folder.
-```
-$ cd checkpoints
-$ mv yolov3-tiny-ours_ckpt_99.pth ../weights/yolov3-tiny-ours_best.pth
+$ python3 train.py --batch-size 32 --cfg cfg/yolov3-tiny-ours.cfg --data data/coco.data --weights ''
 ```
 ### Test
 ```
-$ python3 test.py
+$ python3 test.py --cfg cfg/yolov3-tiny-ours.cfg --data data/coco.data --weights weights/best.pt --batch-size 32 --img-size 640
 ```
 ### Detect
 ```
-$ python3 detect.py
+$ python3 detect.py --cfg cfg/yolov3-tiny-ours.cfg --weights weights/best.pt --img-size 640
 ```
 ### Transform
 ```
-$ python3 ann_to_snn.py
+$ python3 ann_to_snn.py --cfg cfg/yolov3-tiny-ours.cfg --data data/coco.data --weights weights/best.pt --timesteps 128
 ```
 For higher accuracy(mAP), you can try to adjust some hyperparameters.
 
@@ -41,16 +36,14 @@ For higher accuracy(mAP), you can try to adjust some hyperparameters.
 Here we show the results(mAP) of PASCAL VOC & COCO which are commonly used in object detection，and two custom datasets UAV & UAVCUT.
 |  dataset  |  yolov3  |  yolov3-tiny  |  yolov3-tiny-ours  |  yolov3-tiny-ours-snn  |
 |  ----  |  ----  |  ----  |  ----  |  ----  |
-|  UAVCUT  |  99.84%  |  99.86%  |  **99.80%**  |  **99.60%**  |
-|  UAV  |  80.21%  |  90.81%  |  **89.05%**  |  **87.02%**  |
-|  VOC07+12  |  42.63%  |  30.47%  |  **33.32%**  |  **33.68%**  |
-|  COCO2014  |  54.93%  |  30.87%  |  **13.30%**  |  **13.82%**  |
+|  UAVCUT  |  98.90%  |  99.10%  |  **98.80%**  |  **98.60%**  |
+|  UAV  |  99.50%  |  99.40%  |  **99.10%**  |  **98.20%**  |
+|  VOC07+12  |  ing  |  52.30%  |  **55.50%**  |  **ing**  |
+|  COCO2014  |  ing  |  ing  |  **ing**  |  **ing**  |
 
 From the results, we can conclude that: 
-1) for simple custom datasets, converting some operators is equivalent to the original YOLOv3-Tiny; 
-2) for relatively simple dataset like PASCAL VOC, converting some operators leads to higher accuracy than the original YOLOv3-Tiny;
-2) for complete dataset like COCO, the accuracy of converting some operators is lower than the original YOLOv3-Tiny;
-3) regardless of datasets, our method of transformation from ANN to SNN can be nearly lossless.
+1) the accuracy of converting some operators is nearly equivalent to the original YOLOv3-Tiny; 
+2) our method of transformation from ANN to SNN can be nearly lossless.
 
 ![avatar](/assets/uavcut.png)
 
