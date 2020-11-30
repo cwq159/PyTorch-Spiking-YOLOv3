@@ -38,24 +38,29 @@ Here we show the results(mAP) of PASCAL VOC & COCO which are commonly used in ob
 |  ----  |  ----  |  ----  |  ----  |  ----  |
 |  UAVCUT  |  98.90%  |  99.10%  |  **98.80%**  |  **98.60%**  |
 |  UAV  |  99.50%  |  99.40%  |  **99.10%**  |  **98.20%**  |
-|  VOC07+12  |  ing  |  52.30%  |  **55.50%**  |  **ing**  |
-|  COCO2014  |  ing  |  ing  |  **ing**  |  **ing**  |
+|  VOC07+12  |  77.00%  |  52.30%  |  **55.50%**  |  **55.56%**  |
+|  COCO2014  |  ing  |  33.30%  |  **38.70%**  |  **ing**  |
 
 From the results, we can conclude that: 
-1) the accuracy of converting some operators is nearly equivalent to the original YOLOv3-Tiny; 
+1) for simple custom datasets like UAV & UAVCUT, the accuracy of converting some operators is nearly equivalent to the original YOLOv3-Tiny; 
+2) for complex common datasets like PASCAL VOC & COCO, the accuracy of converting some operators is even better than the original YOLOv3-Tiny; 
 2) our method of transformation from ANN to SNN can be nearly lossless.
 
+UAVCUT
+
 ![avatar](/assets/uavcut.png)
+
+UAV
 
 ![avatar](/assets/uav.png)
 
 PASCAL VOC
-![avatar](/assets/voc.png)
-The relatively higher accuracy contributes to the more accurate detection, although there are few objects missed.
+
+![avatar](/assets/voc.jpg)
 
 COCO
-![avatar](/assets/coco.png)
-The lower accuracy contributes to the less accurate detection, with some objects missed or false.
+
+![avatar](/assets/coco.jpg)
 
 ## References
 ### Articles
