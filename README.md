@@ -39,7 +39,7 @@ Here we show the results(mAP) of PASCAL VOC & COCO which are commonly used in ob
 |  UAVCUT  |  98.90%  |  99.10%  |  **98.80%**  |  **98.60%**  |
 |  UAV  |  99.50%  |  99.40%  |  **99.10%**  |  **98.20%**  |
 |  VOC07+12  |  77.00%  |  52.30%  |  **55.50%**  |  **55.56%**  |
-|  COCO2014  |  56.50%  |  33.30%  |  **38.70%**  |  **29.50**  |
+|  COCO2014  |  56.50%  |  33.30%  |  **38.70%**  |  **29.50%**  |
 
 From the results, we can conclude that: 
 1) for simple custom datasets like UAV & UAVCUT, the accuracy of converting some operators is nearly equivalent to the original YOLOv3-Tiny; 
