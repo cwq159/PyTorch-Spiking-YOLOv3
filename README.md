@@ -2,7 +2,7 @@
 A PyTorch implementation of Spiking-YOLOv3, based on the PyTorch implementation of YOLOv3([ultralytics/yolov3](https://github.com/ultralytics/yolov3)), with support for Spiking-YOLOv3-Tiny at present. The whole Spiking-YOLOv3 will be supported soon.
 
 ## Introduction
-For spiking implementation, some operators in YOLOv3-Tiny have been converted equivalently. Please refer to [yolov3-tiny-ours.cfg](/config/yolov3-tiny-ours.cfg) for details.
+For spiking implementation, some operators in YOLOv3-Tiny have been converted equivalently. Please refer to yolov3-tiny-ours(\*).cfg in /cfg for details.
 ### Conversion of some operators
 + 'maxpool(stride=2)'->'convolutional(stride=2)'
 + 'maxpool(stride=1)'->'none'
